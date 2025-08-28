@@ -1467,7 +1467,12 @@ app.post('/api/payroll', async (req, res) => {
       return res.status(404).json({ error: 'Coach not found' });
     }
 
-    
+      // Define date range for current month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
+
     // Fetch coach earnings data
     const coachIdString = coachId.toString();
     const bookings = await Booking.find({
