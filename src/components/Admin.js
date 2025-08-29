@@ -593,6 +593,7 @@ const Admin = () => {
   const handleShowAttendanceHistory = async (user) => {
     setAttendanceHistoryUser(user);
     setShowAttendanceModal(true);
+    setAttendanceHistoryCurrentPage(1); // Reset to first page
     try {
       const res = await fetch(`http://localhost:3001/api/attendance/${user._id}`);
       const data = await res.json();
@@ -1808,6 +1809,16 @@ const Admin = () => {
   const [membershipHistoryUser, setMembershipHistoryUser] = useState(null);
   const [membershipHistoryLoading, setMembershipHistoryLoading] = useState(false);
   const [membershipHistoryError, setMembershipHistoryError] = useState("");
+  const [membershipHistoryCurrentPage, setMembershipHistoryCurrentPage] = useState(1);
+  const MEMBERSHIP_HISTORY_PER_PAGE = 10;
+
+  // Add state for attendance history modal
+  const [attendanceHistoryCurrentPage, setAttendanceHistoryCurrentPage] = useState(1);
+  const ATTENDANCE_HISTORY_PER_PAGE = 10;
+
+  // Add state for coaches attendance history modal
+  const [coachesAttendanceHistoryCurrentPage, setCoachesAttendanceHistoryCurrentPage] = useState(1);
+  const COACHES_ATTENDANCE_HISTORY_PER_PAGE = 10;
 
   // Add state for payment history modal
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false);
@@ -1815,6 +1826,8 @@ const Admin = () => {
   const [paymentHistoryUser, setPaymentHistoryUser] = useState(null);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [paymentHistoryError, setPaymentHistoryError] = useState("");
+  const [paymentHistoryCurrentPage, setPaymentHistoryCurrentPage] = useState(1);
+  const PAYMENT_HISTORY_PER_PAGE = 10;
 
   // Membership expiration management state
   const [membershipExpirationSummary, setMembershipExpirationSummary] = useState({});
@@ -1831,6 +1844,7 @@ const Admin = () => {
     setShowMembershipHistoryModal(true);
     setMembershipHistoryLoading(true);
     setMembershipHistoryError("");
+    setMembershipHistoryCurrentPage(1); // Reset to first page
     try {
       // Prefer userId, fallback to email, and include archived
       const res = await fetch(`http://localhost:3001/api/membership-applications?userId=${user._id || ''}&email=${user.email || ''}&includeArchived=true`);
@@ -1855,6 +1869,7 @@ const Admin = () => {
     setShowPaymentHistoryModal(true);
     setPaymentHistoryLoading(true);
     setPaymentHistoryError("");
+    setPaymentHistoryCurrentPage(1); // Reset to first page
     try {
       // Use the dedicated payment history endpoint for this user
       const cleanUsername = user.username ? user.username.replace('@', '') : '';
@@ -3635,7 +3650,7 @@ const Admin = () => {
               </div>
               {/* Attendance History Modal */}
               {showAttendanceModal && attendanceHistoryUser && (
-                <Modal open={true} onClose={() => { setShowAttendanceModal(false); setHistoryFilterDate(''); }}>
+                <Modal open={true} onClose={() => { setShowAttendanceModal(false); setHistoryFilterDate(''); setAttendanceHistoryCurrentPage(1); }}>
                   <div style={{ minWidth: 350, maxWidth: 600 }}>
                     <h3 style={{ color: '#2ecc40', marginBottom: 18, textAlign: 'center' }}>Attendance History for {attendanceHistoryUser.firstname} {attendanceHistoryUser.lastname}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'flex-end' }}>
@@ -3665,28 +3680,123 @@ const Admin = () => {
                         {filteredAttendanceHistory.length === 0 && (
                           <tr><td colSpan={4} style={{ textAlign: 'center', color: '#888' }}>No attendance records found.</td></tr>
                         )}
-                        {filteredAttendanceHistory.map((rec, idx) => {
-                          const dateObj = new Date(rec.date);
-                          const timeObj = new Date(rec.timestamp);
-                          const phDate = dateObj.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
-                          const phTime = timeObj.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                          return (
-                            <tr key={idx}>
-                              <td style={{ padding: 8 }}>{phDate}</td>
-                              <td style={{ padding: 8 }}>{phTime}</td>
-                              <td style={{ padding: 8, color: rec.status === 'present' ? '#2ecc40' : '#e74c3c', fontWeight: 'bold' }}>{rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}</td>
-                              <td style={{ padding: 8 }}>{rec.confirmedBy}</td>
-                            </tr>
-                          );
-                        })}
+                        {(() => {
+                          const startIndex = (attendanceHistoryCurrentPage - 1) * ATTENDANCE_HISTORY_PER_PAGE;
+                          const endIndex = startIndex + ATTENDANCE_HISTORY_PER_PAGE;
+                          const currentPageAttendance = filteredAttendanceHistory.slice(startIndex, endIndex);
+                          
+                          return currentPageAttendance.map((rec, idx) => {
+                            const dateObj = new Date(rec.date);
+                            const timeObj = new Date(rec.timestamp);
+                            const phDate = dateObj.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
+                            const phTime = timeObj.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            return (
+                              <tr key={idx}>
+                                <td style={{ padding: 8 }}>{phDate}</td>
+                                <td style={{ padding: 8 }}>{phTime}</td>
+                                <td style={{ padding: 8, color: rec.status === 'present' ? '#2ecc40' : '#e74c3c', fontWeight: 'bold' }}>{rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}</td>
+                                <td style={{ padding: 8 }}>{rec.confirmedBy}</td>
+                              </tr>
+                            );
+                          });
+                        })()}
                       </tbody>
                     </table>
+                    
+                    {/* Pagination Controls */}
+                    {filteredAttendanceHistory.length > ATTENDANCE_HISTORY_PER_PAGE && (
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        marginTop: 20, 
+                        gap: 10 
+                      }}>
+                        <button
+                          onClick={() => setAttendanceHistoryCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={attendanceHistoryCurrentPage === 1}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #ddd',
+                            borderRadius: 4,
+                            background: attendanceHistoryCurrentPage === 1 ? '#f5f5f5' : '#fff',
+                            color: attendanceHistoryCurrentPage === 1 ? '#999' : '#333',
+                            cursor: attendanceHistoryCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                            fontSize: 14
+                          }}
+                        >
+                          Previous
+                        </button>
+                        
+                        <span style={{ 
+                          padding: '8px 16px', 
+                          fontSize: 14, 
+                          color: '#666',
+                          background: '#f8f9fa',
+                          borderRadius: 4,
+                          border: '1px solid #e9ecef'
+                        }}>
+                          Page {attendanceHistoryCurrentPage} of {Math.ceil(filteredAttendanceHistory.length / ATTENDANCE_HISTORY_PER_PAGE)}
+                        </span>
+                        
+                        <button
+                          onClick={() => setAttendanceHistoryCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredAttendanceHistory.length / ATTENDANCE_HISTORY_PER_PAGE)))}
+                          disabled={attendanceHistoryCurrentPage >= Math.ceil(filteredAttendanceHistory.length / ATTENDANCE_HISTORY_PER_PAGE)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #ddd',
+                            borderRadius: 4,
+                            background: attendanceHistoryCurrentPage >= Math.ceil(filteredAttendanceHistory.length / ATTENDANCE_HISTORY_PER_PAGE) ? '#f5f5f5' : '#fff',
+                            color: attendanceHistoryCurrentPage >= Math.ceil(filteredAttendanceHistory.length / ATTENDANCE_HISTORY_PER_PAGE) ? '#999' : '#333',
+                            cursor: attendanceHistoryCurrentPage >= Math.ceil(filteredAttendanceHistory.length / ATTENDANCE_HISTORY_PER_PAGE) ? 'not-allowed' : 'pointer',
+                            fontSize: 14
+                          }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Show total count and close button */}
+                    <div style={{ 
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: 15
+                    }}>
+                      <div style={{ 
+                        fontSize: 12, 
+                        color: '#666' 
+                      }}>
+                        Showing {Math.min((attendanceHistoryCurrentPage - 1) * ATTENDANCE_HISTORY_PER_PAGE + 1, filteredAttendanceHistory.length)} - {Math.min(attendanceHistoryCurrentPage * ATTENDANCE_HISTORY_PER_PAGE, filteredAttendanceHistory.length)} of {filteredAttendanceHistory.length} records
+                      </div>
+                      <button
+                        onClick={() => { setShowAttendanceModal(false); setHistoryFilterDate(''); setAttendanceHistoryCurrentPage(1); }}
+                        style={{
+                          background: '#e74c3c',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: 30,
+                          height: 30,
+                          fontSize: 16,
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Close"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 </Modal>
               )}
               {/* Membership History Modal */}
               {showMembershipHistoryModal && membershipHistoryUser && (
-                <Modal open={true} onClose={() => { setShowMembershipHistoryModal(false); setMembershipHistoryUser(null); setMembershipHistory([]); }}>
+                <Modal open={true} onClose={() => { setShowMembershipHistoryModal(false); setMembershipHistoryUser(null); setMembershipHistory([]); setMembershipHistoryCurrentPage(1); }}>
                   <div style={{ minWidth: 350, maxWidth: 600 }}>
                     <h3 style={{ color: '#2196f3', marginBottom: 18, textAlign: 'center' }}>Membership History for {membershipHistoryUser.firstname} {membershipHistoryUser.lastname}</h3>
                     {membershipHistoryLoading ? (
@@ -3694,88 +3804,282 @@ const Admin = () => {
                     ) : membershipHistoryError ? (
                       <div style={{ color: 'red' }}>{membershipHistoryError}</div>
                     ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                        <thead>
-                          <tr style={{ background: '#f8f8f8' }}>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Date Submitted</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Status</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Start Date</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>End Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {membershipHistory.length === 0 && (
-                            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#888' }}>No membership records found.</td></tr>
-                          )}
-                          {membershipHistory.map((rec, idx) => {
-                            let statusLabel = rec.status ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1) : '-';
-                            // If approved and expired, show 'Finished'
-                            if (
-                              rec.status &&
-                              rec.status.toLowerCase() === 'approved' &&
-                              rec.expirationDate &&
-                              new Date(rec.expirationDate) < new Date()
-                            ) {
-                              statusLabel = 'Finished';
-                            }
-                            return (
-                              <tr key={rec._id || idx}>
-                                <td style={{ padding: 8 }}>{rec.date ? new Date(rec.date).toLocaleString() : '-'}</td>
-                                <td style={{ padding: 8, color: statusLabel === 'Approved' ? '#2ecc40' : statusLabel === 'Rejected' ? '#e74c3c' : statusLabel === 'Finished' ? '#888' : '#f39c12', fontWeight: 'bold' }}>{statusLabel}</td>
-                                <td style={{ padding: 8 }}>{rec.startDate ? new Date(rec.startDate).toLocaleDateString() : '-'}</td>
-                                <td style={{ padding: 8 }}>{rec.expirationDate ? new Date(rec.expirationDate).toLocaleDateString() : '-'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                      <>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                          <thead>
+                            <tr style={{ background: '#f8f8f8' }}>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Date Submitted</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Status</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Start Date</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>End Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {membershipHistory.length === 0 && (
+                              <tr><td colSpan={4} style={{ textAlign: 'center', color: '#888' }}>No membership records found.</td></tr>
+                            )}
+                            {(() => {
+                              const startIndex = (membershipHistoryCurrentPage - 1) * MEMBERSHIP_HISTORY_PER_PAGE;
+                              const endIndex = startIndex + MEMBERSHIP_HISTORY_PER_PAGE;
+                              const currentPageMembership = membershipHistory.slice(startIndex, endIndex);
+                              
+                              return currentPageMembership.map((rec, idx) => {
+                                let statusLabel = rec.status ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1) : '-';
+                                // If approved and expired, show 'Finished'
+                                if (
+                                  rec.status &&
+                                  rec.status.toLowerCase() === 'approved' &&
+                                  rec.expirationDate &&
+                                  new Date(rec.expirationDate) < new Date()
+                                ) {
+                                  statusLabel = 'Finished';
+                                }
+                                return (
+                                  <tr key={rec._id || idx}>
+                                    <td style={{ padding: 8 }}>{rec.date ? new Date(rec.date).toLocaleString() : '-'}</td>
+                                    <td style={{ padding: 8, color: statusLabel === 'Approved' ? '#2ecc40' : statusLabel === 'Rejected' ? '#e74c3c' : statusLabel === 'Finished' ? '#888' : '#f39c12', fontWeight: 'bold' }}>{statusLabel}</td>
+                                    <td style={{ padding: 8 }}>{rec.startDate ? new Date(rec.startDate).toLocaleDateString() : '-'}</td>
+                                    <td style={{ padding: 8 }}>{rec.expirationDate ? new Date(rec.expirationDate).toLocaleDateString() : '-'}</td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                        
+                        {/* Pagination Controls */}
+                        {membershipHistory.length > MEMBERSHIP_HISTORY_PER_PAGE && (
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'center', 
+                            alignItems: 'center', 
+                            marginTop: 20, 
+                            gap: 10 
+                          }}>
+                            <button
+                              onClick={() => setMembershipHistoryCurrentPage(prev => Math.max(prev - 1, 1))}
+                              disabled={membershipHistoryCurrentPage === 1}
+                              style={{
+                                padding: '8px 12px',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                background: membershipHistoryCurrentPage === 1 ? '#f5f5f5' : '#fff',
+                                color: membershipHistoryCurrentPage === 1 ? '#999' : '#333',
+                                cursor: membershipHistoryCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                                fontSize: 14
+                              }}
+                            >
+                              Previous
+                            </button>
+                            
+                            <span style={{ 
+                              padding: '8px 16px', 
+                              fontSize: 14, 
+                              color: '#666',
+                              background: '#f8f9fa',
+                              borderRadius: 4,
+                              border: '1px solid #e9ecef'
+                            }}>
+                              Page {membershipHistoryCurrentPage} of {Math.ceil(membershipHistory.length / MEMBERSHIP_HISTORY_PER_PAGE)}
+                            </span>
+                            
+                            <button
+                              onClick={() => setMembershipHistoryCurrentPage(prev => Math.min(prev + 1, Math.ceil(membershipHistory.length / MEMBERSHIP_HISTORY_PER_PAGE)))}
+                              disabled={membershipHistoryCurrentPage >= Math.ceil(membershipHistory.length / MEMBERSHIP_HISTORY_PER_PAGE)}
+                              style={{
+                                padding: '8px 12px',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                background: membershipHistoryCurrentPage >= Math.ceil(membershipHistory.length / MEMBERSHIP_HISTORY_PER_PAGE) ? '#f5f5f5' : '#fff',
+                                color: membershipHistoryCurrentPage >= Math.ceil(membershipHistory.length / MEMBERSHIP_HISTORY_PER_PAGE) ? '#999' : '#333',
+                                cursor: membershipHistoryCurrentPage >= Math.ceil(membershipHistory.length / MEMBERSHIP_HISTORY_PER_PAGE) ? 'not-allowed' : 'pointer',
+                                fontSize: 14
+                              }}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Show total count and close button */}
+                        <div style={{ 
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: 15
+                        }}>
+                          <div style={{ 
+                            fontSize: 12, 
+                            color: '#666' 
+                          }}>
+                            Showing {Math.min((membershipHistoryCurrentPage - 1) * MEMBERSHIP_HISTORY_PER_PAGE + 1, membershipHistory.length)} - {Math.min(membershipHistoryCurrentPage * MEMBERSHIP_HISTORY_PER_PAGE, membershipHistory.length)} of {membershipHistory.length} records
+                          </div>
+                          <button
+                            onClick={() => { setShowMembershipHistoryModal(false); setMembershipHistoryUser(null); setMembershipHistory([]); setMembershipHistoryCurrentPage(1); }}
+                            style={{
+                              background: '#e74c3c',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 30,
+                              height: 30,
+                              fontSize: 16,
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="Close"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </Modal>
               )}
               {/* Payment History Modal */}
               {showPaymentHistoryModal && paymentHistoryUser && (
-                <Modal open={true} onClose={() => { setShowPaymentHistoryModal(false); setPaymentHistoryUser(null); setPaymentHistory([]); }}>
-                  <div style={{ minWidth: 350, maxWidth: 700 }}>
+                <Modal open={true} onClose={() => { setShowPaymentHistoryModal(false); setPaymentHistoryUser(null); setPaymentHistory([]); setPaymentHistoryCurrentPage(1); }}>
+                  <div style={{ minWidth: 300, maxWidth: 500 }}>
                     <h3 style={{ color: '#2196f3', marginBottom: 18, textAlign: 'center' }}>Payment History for {paymentHistoryUser.firstname} {paymentHistoryUser.lastname}</h3>
                     {paymentHistoryLoading ? (
                       <div>Loading...</div>
                     ) : paymentHistoryError ? (
                       <div style={{ color: 'red' }}>{paymentHistoryError}</div>
                     ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                        <thead>
-                          <tr style={{ background: '#f8f8f8' }}>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Date</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Time</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Amount</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Status</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Class</th>
-                            <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Coach</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paymentHistory.length === 0 && (
-                            <tr><td colSpan={6} style={{ textAlign: 'center', color: '#888' }}>No payment records found.</td></tr>
-                          )}
-                          {paymentHistory.map((rec, idx) => {
-                            const dateObj = new Date(rec.date);
-                            const phDate = dateObj.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
-                            return (
-                              <tr key={rec._id || idx}>
-                                <td style={{ padding: 8 }}>{phDate}</td>
-                                <td style={{ padding: 8 }}>{rec.time || 'N/A'}</td>
-                                <td style={{ padding: 8 }}>{rec.amount ? `₱${rec.amount}` : 'N/A'}</td>
-                                <td style={{ padding: 8, color: rec.status === 'verified' ? '#2ecc40' : rec.status === 'rejected' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>
-                                  {rec.status ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1) : 'Pending'}
-                                </td>
-                                <td style={{ padding: 8 }}>{rec.className || 'N/A'}</td>
-                                <td style={{ padding: 8 }}>{rec.coachName || rec.coachId || 'N/A'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                      <>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                          <thead>
+                            <tr style={{ background: '#f8f8f8' }}>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Date</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Time</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Amount</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Status</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Class</th>
+                              <th style={{ padding: 8, fontWeight: 'bold', fontSize: 15 }}>Coach</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paymentHistory.length === 0 && (
+                              <tr><td colSpan={6} style={{ textAlign: 'center', color: '#888' }}>No payment records found.</td></tr>
+                            )}
+                            {(() => {
+                              const startIndex = (paymentHistoryCurrentPage - 1) * PAYMENT_HISTORY_PER_PAGE;
+                              const endIndex = startIndex + PAYMENT_HISTORY_PER_PAGE;
+                              const currentPagePayments = paymentHistory.slice(startIndex, endIndex);
+                              
+                              return currentPagePayments.map((rec, idx) => {
+                                const dateObj = new Date(rec.date);
+                                const phDate = dateObj.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
+                                return (
+                                  <tr key={rec._id || idx}>
+                                    <td style={{ padding: 8 }}>{phDate}</td>
+                                    <td style={{ padding: 8 }}>{rec.time || 'N/A'}</td>
+                                    <td style={{ padding: 8 }}>{rec.amount ? `₱${rec.amount}` : 'N/A'}</td>
+                                    <td style={{ padding: 8, color: rec.status === 'verified' ? '#2ecc40' : rec.status === 'rejected' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>
+                                      {rec.status ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1) : 'Pending'}
+                                    </td>
+                                    <td style={{ padding: 8 }}>{rec.className || 'N/A'}</td>
+                                    <td style={{ padding: 8 }}>{rec.coachName || rec.coachId || 'N/A'}</td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                        
+                        {/* Pagination Controls */}
+                        {paymentHistory.length > PAYMENT_HISTORY_PER_PAGE && (
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'center', 
+                            alignItems: 'center', 
+                            marginTop: 20, 
+                            gap: 10 
+                          }}>
+                            <button
+                              onClick={() => setPaymentHistoryCurrentPage(prev => Math.max(prev - 1, 1))}
+                              disabled={paymentHistoryCurrentPage === 1}
+                              style={{
+                                padding: '8px 12px',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                background: paymentHistoryCurrentPage === 1 ? '#f5f5f5' : '#fff',
+                                color: paymentHistoryCurrentPage === 1 ? '#999' : '#333',
+                                cursor: paymentHistoryCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                                fontSize: 14
+                              }}
+                            >
+                              Previous
+                            </button>
+                            
+                            <span style={{ 
+                              padding: '8px 16px', 
+                              fontSize: 14, 
+                              color: '#666',
+                              background: '#f8f9fa',
+                              borderRadius: 4,
+                              border: '1px solid #e9ecef'
+                            }}>
+                              Page {paymentHistoryCurrentPage} of {Math.ceil(paymentHistory.length / PAYMENT_HISTORY_PER_PAGE)}
+                            </span>
+                            
+                            <button
+                              onClick={() => setPaymentHistoryCurrentPage(prev => Math.min(prev + 1, Math.ceil(paymentHistory.length / PAYMENT_HISTORY_PER_PAGE)))}
+                              disabled={paymentHistoryCurrentPage >= Math.ceil(paymentHistory.length / PAYMENT_HISTORY_PER_PAGE)}
+                              style={{
+                                padding: '8px 12px',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                background: paymentHistoryCurrentPage >= Math.ceil(paymentHistory.length / PAYMENT_HISTORY_PER_PAGE) ? '#f5f5f5' : '#fff',
+                                color: paymentHistoryCurrentPage >= Math.ceil(paymentHistory.length / PAYMENT_HISTORY_PER_PAGE) ? '#999' : '#333',
+                                cursor: paymentHistoryCurrentPage >= Math.ceil(paymentHistory.length / PAYMENT_HISTORY_PER_PAGE) ? 'not-allowed' : 'pointer',
+                                fontSize: 14
+                              }}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Show total count and close button */}
+                        <div style={{ 
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: 15
+                        }}>
+                          <div style={{ 
+                            fontSize: 12, 
+                            color: '#666' 
+                          }}>
+                            Showing {Math.min((paymentHistoryCurrentPage - 1) * PAYMENT_HISTORY_PER_PAGE + 1, paymentHistory.length)} - {Math.min(paymentHistoryCurrentPage * PAYMENT_HISTORY_PER_PAGE, paymentHistory.length)} of {paymentHistory.length} payments
+                          </div>
+                          <button
+                            onClick={() => { setShowPaymentHistoryModal(false); setPaymentHistoryUser(null); setPaymentHistory([]); setPaymentHistoryCurrentPage(1); }}
+                            style={{
+                              background: '#e74c3c',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 30,
+                              height: 30,
+                              fontSize: 16,
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="Close"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </Modal>
@@ -3984,7 +4288,7 @@ const Admin = () => {
               </div>
               {/* Attendance History Modal (for coaches) */}
               {showCoachesAttendanceModal && coachesAttendanceHistoryCoach && (
-                <Modal open={true} onClose={() => { setShowCoachesAttendanceModal(false); setHistoryFilterDate(''); }}>
+                <Modal open={true} onClose={() => { setShowCoachesAttendanceModal(false); setHistoryFilterDate(''); setCoachesAttendanceHistoryCurrentPage(1); }}>
                   <div style={{ minWidth: 350, maxWidth: 600 }}>
                     <h3 style={{ color: '#2ecc40', marginBottom: 18, textAlign: 'center' }}>Attendance History for {coachesAttendanceHistoryCoach.firstname} {coachesAttendanceHistoryCoach.lastname}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'flex-end' }}>
@@ -4025,33 +4329,157 @@ const Admin = () => {
                         ).length === 0 && (
                           <tr><td colSpan={4} style={{ textAlign: 'center', color: '#888' }}>No attendance records found.</td></tr>
                         )}
-                        {(historyFilterDate
-                          ? coachesAttendanceHistory.filter(rec => {
-                              const recDate = new Date(rec.date);
-                              const filterDate = new Date(historyFilterDate);
-                              return (
-                                recDate.getFullYear() === filterDate.getFullYear() &&
-                                recDate.getMonth() === filterDate.getMonth() &&
-                                recDate.getDate() === filterDate.getDate()
-                              );
-                            })
-                          : coachesAttendanceHistory
-                        ).map((rec, idx) => {
-                          const dateObj = new Date(rec.date);
-                          const timeObj = new Date(rec.timestamp);
-                          const phDate = dateObj.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
-                          const phTime = timeObj.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                          return (
-                            <tr key={idx}>
-                              <td style={{ padding: 8 }}>{phDate}</td>
-                              <td style={{ padding: 8 }}>{phTime}</td>
-                              <td style={{ padding: 8, color: rec.status === 'present' ? '#2ecc40' : '#e74c3c', fontWeight: 'bold' }}>{rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}</td>
-                              <td style={{ padding: 8 }}>{rec.confirmedBy}</td>
-                            </tr>
-                          );
-                        })}
+                        {(() => {
+                          const filteredCoachesAttendanceHistory = historyFilterDate
+                            ? coachesAttendanceHistory.filter(rec => {
+                                const recDate = new Date(rec.date);
+                                const filterDate = new Date(historyFilterDate);
+                                return (
+                                  recDate.getFullYear() === filterDate.getFullYear() &&
+                                  recDate.getMonth() === filterDate.getMonth() &&
+                                  recDate.getDate() === filterDate.getDate()
+                                );
+                              })
+                            : coachesAttendanceHistory;
+                          
+                          const startIndex = (coachesAttendanceHistoryCurrentPage - 1) * COACHES_ATTENDANCE_HISTORY_PER_PAGE;
+                          const endIndex = startIndex + COACHES_ATTENDANCE_HISTORY_PER_PAGE;
+                          const currentPageCoachesAttendance = filteredCoachesAttendanceHistory.slice(startIndex, endIndex);
+                          
+                          return currentPageCoachesAttendance.map((rec, idx) => {
+                            const dateObj = new Date(rec.date);
+                            const timeObj = new Date(rec.timestamp);
+                            const phDate = dateObj.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
+                            const phTime = timeObj.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            return (
+                              <tr key={idx}>
+                                <td style={{ padding: 8 }}>{phDate}</td>
+                                <td style={{ padding: 8 }}>{phTime}</td>
+                                <td style={{ padding: 8, color: rec.status === 'present' ? '#2ecc40' : '#e74c3c', fontWeight: 'bold' }}>{rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}</td>
+                                <td style={{ padding: 8 }}>{rec.confirmedBy}</td>
+                              </tr>
+                            );
+                          });
+                        })()}
                       </tbody>
                     </table>
+                    
+                    {/* Pagination Controls */}
+                    {(() => {
+                      const filteredCoachesAttendanceHistory = historyFilterDate
+                        ? coachesAttendanceHistory.filter(rec => {
+                            const recDate = new Date(rec.date);
+                            const filterDate = new Date(historyFilterDate);
+                            return (
+                              recDate.getFullYear() === filterDate.getFullYear() &&
+                              recDate.getMonth() === filterDate.getMonth() &&
+                              recDate.getDate() === filterDate.getDate()
+                            );
+                          })
+                        : coachesAttendanceHistory;
+                      
+                      return filteredCoachesAttendanceHistory.length > COACHES_ATTENDANCE_HISTORY_PER_PAGE && (
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'center', 
+                          alignItems: 'center', 
+                          marginTop: 20, 
+                          gap: 10 
+                        }}>
+                          <button
+                            onClick={() => setCoachesAttendanceHistoryCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={coachesAttendanceHistoryCurrentPage === 1}
+                            style={{
+                              padding: '8px 12px',
+                              border: '1px solid #ddd',
+                              borderRadius: 4,
+                              background: coachesAttendanceHistoryCurrentPage === 1 ? '#f5f5f5' : '#fff',
+                              color: coachesAttendanceHistoryCurrentPage === 1 ? '#999' : '#333',
+                              cursor: coachesAttendanceHistoryCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                              fontSize: 14
+                            }}
+                          >
+                            Previous
+                          </button>
+                          
+                          <span style={{ 
+                            padding: '8px 16px', 
+                            fontSize: 14, 
+                            color: '#666',
+                            background: '#f8f9fa',
+                            borderRadius: 4,
+                            border: '1px solid #e9ecef'
+                          }}>
+                            Page {coachesAttendanceHistoryCurrentPage} of {Math.ceil(filteredCoachesAttendanceHistory.length / COACHES_ATTENDANCE_HISTORY_PER_PAGE)}
+                          </span>
+                          
+                          <button
+                            onClick={() => setCoachesAttendanceHistoryCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredCoachesAttendanceHistory.length / COACHES_ATTENDANCE_HISTORY_PER_PAGE)))}
+                            disabled={coachesAttendanceHistoryCurrentPage >= Math.ceil(filteredCoachesAttendanceHistory.length / COACHES_ATTENDANCE_HISTORY_PER_PAGE)}
+                            style={{
+                              padding: '8px 12px',
+                              border: '1px solid #ddd',
+                              borderRadius: 4,
+                              background: coachesAttendanceHistoryCurrentPage >= Math.ceil(filteredCoachesAttendanceHistory.length / COACHES_ATTENDANCE_HISTORY_PER_PAGE) ? '#f5f5f5' : '#fff',
+                              color: coachesAttendanceHistoryCurrentPage >= Math.ceil(filteredCoachesAttendanceHistory.length / COACHES_ATTENDANCE_HISTORY_PER_PAGE) ? '#999' : '#333',
+                              cursor: coachesAttendanceHistoryCurrentPage >= Math.ceil(filteredCoachesAttendanceHistory.length / COACHES_ATTENDANCE_HISTORY_PER_PAGE) ? 'not-allowed' : 'pointer',
+                              fontSize: 14
+                            }}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Show total count and close button */}
+                    <div style={{ 
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: 15
+                    }}>
+                      <div style={{ 
+                        fontSize: 12, 
+                        color: '#666' 
+                      }}>
+                        {(() => {
+                          const filteredCoachesAttendanceHistory = historyFilterDate
+                            ? coachesAttendanceHistory.filter(rec => {
+                                const recDate = new Date(rec.date);
+                                const filterDate = new Date(historyFilterDate);
+                                return (
+                                  recDate.getFullYear() === filterDate.getFullYear() &&
+                                  recDate.getMonth() === filterDate.getMonth() &&
+                                  recDate.getDate() === filterDate.getDate()
+                                );
+                              })
+                            : coachesAttendanceHistory;
+                          
+                          return `Showing ${Math.min((coachesAttendanceHistoryCurrentPage - 1) * COACHES_ATTENDANCE_HISTORY_PER_PAGE + 1, filteredCoachesAttendanceHistory.length)} - ${Math.min(coachesAttendanceHistoryCurrentPage * COACHES_ATTENDANCE_HISTORY_PER_PAGE, filteredCoachesAttendanceHistory.length)} of ${filteredCoachesAttendanceHistory.length} records`;
+                        })()}
+                      </div>
+                      <button
+                        onClick={() => { setShowCoachesAttendanceModal(false); setHistoryFilterDate(''); setCoachesAttendanceHistoryCurrentPage(1); }}
+                        style={{
+                          background: '#e74c3c',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: 30,
+                          height: 30,
+                          fontSize: 16,
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Close"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 </Modal>
               )}
