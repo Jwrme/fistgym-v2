@@ -7,6 +7,8 @@ const MembershipApplicationsPanel = () => {
   const [actionLoading, setActionLoading] = useState('');
   const [zoomImg, setZoomImg] = useState(null);
   const [phTime, setPhTime] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const APPLICATIONS_PER_PAGE = 5;
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -47,6 +49,24 @@ const MembershipApplicationsPanel = () => {
     return app.status !== 'approved' || !app.expirationDate;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredApplications.length / APPLICATIONS_PER_PAGE);
+  const startIndex = (currentPage - 1) * APPLICATIONS_PER_PAGE;
+  const endIndex = startIndex + APPLICATIONS_PER_PAGE;
+  const currentApplications = filteredApplications.slice(startIndex, endIndex);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
   const handleAction = async (id, action) => {
     setActionLoading(id + action);
     try {
@@ -72,58 +92,107 @@ const MembershipApplicationsPanel = () => {
         <h3 style={{ fontWeight: 'bold', fontSize: 22, color: '#181818', letterSpacing: 1, margin: 0 }}>All Membership Applications</h3>
         <div style={{ fontWeight: 'bold', fontSize: 16, color: '#2ecc40', minWidth: 320, textAlign: 'right' }}>{phTime}</div>
       </div>
-      {loading ? <div>Loading...</div> : error ? <div style={{ color: 'red' }}>{error}</div> : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 16 }}>
-            <thead>
-              <tr style={{ background: '#f8f8f8', color: '#222', fontWeight: 700 }}>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Name</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Email</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Date</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Status</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Start Date</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>End Date</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Proof of Payment</th>
-                <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24, color: '#888' }}>No applications found.</td></tr>
-              )}
-              {filteredApplications.map(app => (
-                <tr key={app._id} style={{ background: app.status === 'approved' ? '#eaffea' : app.status === 'rejected' ? '#ffeaea' : '#fff' }}>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.name}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.email}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{new Date(app.date).toLocaleString()}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee', fontWeight: 600, color: app.status === 'approved' ? '#2ecc40' : app.status === 'rejected' ? '#e74c3c' : '#f39c12' }}>{app.status.charAt(0).toUpperCase() + app.status.slice(1)}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.startDate ? new Date(app.startDate).toLocaleString() : '-'}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.expirationDate ? new Date(app.expirationDate).toLocaleString() : '-'}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>
-                    {app.proof ? (
-                      <img 
-                        src={app.proof} 
-                        alt="Proof of Payment" 
-                        style={{ maxWidth: 80, maxHeight: 80, borderRadius: 8, border: '1px solid #eee', cursor: 'zoom-in' }} 
-                        onClick={() => setZoomImg(app.proof)}
-                      />
-                    ) : <span style={{ color: '#bbb' }}>No image</span>}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>
-                    {app.status === 'pending' ? (
-                      <>
-                        <button onClick={() => handleAction(app._id, 'approve')} disabled={actionLoading === app._id + 'approve'} style={{ background: '#2ecc40', color: '#fff', border: 'none', borderRadius: 5, padding: '7px 18px', fontWeight: 600, marginRight: 8, cursor: 'pointer' }}>Approve</button>
-                        <button onClick={() => handleAction(app._id, 'reject')} disabled={actionLoading === app._id + 'reject'} style={{ background: '#e74c3c', color: '#fff', border: 'none', borderRadius: 5, padding: '7px 18px', fontWeight: 600, cursor: 'pointer' }}>Reject</button>
-                      </>
-                    ) : (
-                      <span style={{ color: '#888' }}>—</span>
-                    )}
-                  </td>
+{loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div style={{ color: 'red' }}>{error}</div>
+      ) : (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 16 }}>
+              <thead>
+                <tr style={{ background: '#f8f8f8', color: '#222', fontWeight: 700 }}>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Name</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Email</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Date</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Status</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Start Date</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>End Date</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Proof of Payment</th>
+                  <th style={{ padding: 10, borderBottom: '2px solid #eee' }}>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredApplications.length === 0 && (
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24, color: '#888' }}>No applications found.</td></tr>
+                )}
+                {currentApplications.map(app => (
+                  <tr key={app._id} style={{ background: app.status === 'approved' ? '#eaffea' : app.status === 'rejected' ? '#ffeaea' : '#fff' }}>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.name}</td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.email}</td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{new Date(app.date).toLocaleString()}</td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee', fontWeight: 600, color: app.status === 'approved' ? '#2ecc40' : app.status === 'rejected' ? '#e74c3c' : '#f39c12' }}>{app.status.charAt(0).toUpperCase() + app.status.slice(1)}</td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.startDate ? new Date(app.startDate).toLocaleString() : '-'}</td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>{app.expirationDate ? new Date(app.expirationDate).toLocaleString() : '-'}</td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>
+                      {app.proof ? (
+                        <img 
+                          src={app.proof} 
+                          alt="Proof of Payment" 
+                          style={{ maxWidth: 80, maxHeight: 80, borderRadius: 8, border: '1px solid #eee', cursor: 'zoom-in' }} 
+                          onClick={() => setZoomImg(app.proof)}
+                        />
+                      ) : <span style={{ color: '#bbb' }}>No image</span>}
+                    </td>
+                    <td style={{ padding: 10, borderBottom: '1px solid #eee' }}>
+                      {app.status === 'pending' ? (
+                        <>
+                          <button onClick={() => handleAction(app._id, 'approve')} disabled={actionLoading === app._id + 'approve'} style={{ background: '#2ecc40', color: '#fff', border: 'none', borderRadius: 5, padding: '7px 18px', fontWeight: 600, marginRight: 8, cursor: 'pointer' }}>Approve</button>
+                          <button onClick={() => handleAction(app._id, 'reject')} disabled={actionLoading === app._id + 'reject'} style={{ background: '#e74c3c', color: '#fff', border: 'none', borderRadius: 5, padding: '7px 18px', fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+                        </>
+                      ) : (
+                        <span style={{ color: '#888' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination Controls */}
+          {filteredApplications.length > APPLICATIONS_PER_PAGE && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, padding: '0 10px' }}>
+              <div style={{ fontSize: 14, color: '#666' }}>
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredApplications.length)} of {filteredApplications.length} applications
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button 
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  style={{
+                    background: currentPage === 1 ? '#f5f5f5' : '#2ecc40',
+                    color: currentPage === 1 ? '#999' : '#fff',
+                    border: 'none',
+                    borderRadius: 5,
+                    padding: '8px 16px',
+                    fontWeight: 600,
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: 14, color: '#666', margin: '0 10px' }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    background: currentPage === totalPages ? '#f5f5f5' : '#2ecc40',
+                    color: currentPage === totalPages ? '#999' : '#fff',
+                    border: 'none',
+                    borderRadius: 5,
+                    padding: '8px 16px',
+                    fontWeight: 600,
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
       {/* Zoom Modal */}
       {zoomImg && (
