@@ -212,7 +212,7 @@ export default function Contact() {
           <div className="contact-separator"></div>
           {/* Social Links */}
           <div className="contact-card">
-            <h2>WE'RE SOCIAL</h2>
+            <h2>OUR SOCIALS</h2>
             <ul>
               {['messenger', 'facebook', 'instagram', 'youtube'].map(key => {
                 const soc = contactInfo.social?.[key];
