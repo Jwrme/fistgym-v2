@@ -98,8 +98,7 @@ const Schedules = () => {
             'Jiu Jitsu Kids': 400,
             'MMA': 450,
             'Judo': 450,
-            'Wrestling': 400,
-            'Aikido': 400
+            'Wrestling': 400
         },
         classQrCodes: {
             'Boxing': '/images/gcashqr.png',
@@ -109,8 +108,7 @@ const Schedules = () => {
             'Jiu Jitsu Kids': '/images/gcashqr.png',
             'MMA': '/images/gcashqr.png',
             'Judo': '/images/gcashqr.png',
-            'Wrestling': '/images/gcashqr.png',
-            'Aikido': '/images/gcashqr.png'
+            'Wrestling': '/images/gcashqr.png'
         },
         classMembershipQrCodes: {
             'Boxing': '/images/gcashqr.png',
@@ -120,8 +118,7 @@ const Schedules = () => {
             'Jiu Jitsu Kids': '/images/gcashqr.png',
             'MMA': '/images/gcashqr.png',
             'Judo': '/images/gcashqr.png',
-            'Wrestling': '/images/gcashqr.png',
-            'Aikido': '/images/gcashqr.png'
+            'Wrestling': '/images/gcashqr.png'
         },
         classPackageQrCodes: {
             'Boxing': '/images/gcashqr.png',
@@ -131,8 +128,7 @@ const Schedules = () => {
             'Jiu Jitsu Kids': '/images/gcashqr.png',
             'MMA': '/images/gcashqr.png',
             'Judo': '/images/gcashqr.png',
-            'Wrestling': '/images/gcashqr.png',
-            'Aikido': '/images/gcashqr.png'
+            'Wrestling': '/images/gcashqr.png'
         },
         membershipRate: 1000,
         membershipQrCode: '/images/gcashqr.png' 
@@ -3538,7 +3534,7 @@ const Schedules = () => {
                                     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
                                     gap: '12px'
                                 }}>
-                                    {Object.entries(membershipPackages).map(([classType, packageInfo]) => (
+                                    {Object.entries(membershipPackages).filter(([classType]) => classType !== 'Aikido').map(([classType, packageInfo]) => (
                                         <div 
                                             key={classType}
                                             style={{
